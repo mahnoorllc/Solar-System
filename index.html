@@ -115,6 +115,27 @@
             font-size: 13px;
             line-height: 1.5;
         }
+        #mission-info {
+            margin-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 15px;
+        }
+        #mission-info h3 {
+            margin-top: 0;
+            color: #f39c12;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+        #mission-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        #mission-list li {
+            margin-bottom: 10px;
+        }
         #close-btn {
             position: absolute;
             top: 10px;
@@ -129,24 +150,30 @@
         #close-btn:hover {
             color: #f39c12;
         }
-        #controls-panel {
-            bottom: 20px;
-            left: 20px;
-            width: 250px;
+        #footer-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            z-index: 20;
         }
-        #controls-panel label {
-            display: block;
-            margin-bottom: 10px;
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #f39c12;
             font-weight: bold;
         }
-        #speed-slider {
-            width: 100%;
-            cursor: pointer;
-        }
         .control-button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 15px;
+            padding: 8px 15px;
             background-color: #f39c12;
             border: none;
             border-radius: 5px;
@@ -158,14 +185,20 @@
         .control-button:hover {
             background-color: #ffb84d;
         }
-        .zoom-controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
         .zoom-controls .control-button {
-            margin-top: 0;
             font-size: 1.2em;
+            padding: 5px 12px;
+        }
+        #time-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 12px;
+            min-width: 220px;
+        }
+        #time-display #date {
+            font-weight: bold;
         }
         #menu-panel {
             top: 20px;
@@ -292,14 +325,7 @@
             .main-header h1 {
                 font-size: 1.5em;
             }
-            .main-header .purpose {
-                font-size: 0.9em;
-            }
-            .main-header .credits {
-                font-size: 0.8em;
-                gap: 15px;
-            }
-            #info-panel, #controls-panel, #menu-panel {
+            #info-panel, #menu-panel {
                 left: 50%;
                 transform: translateX(-50%);
                 width: 90%;
@@ -307,19 +333,12 @@
             }
             #info-panel {
                 top: auto;
-                bottom: 220px; /* Position above controls */
-            }
-            #controls-panel {
-                bottom: 20px;
+                bottom: 150px; /* Adjust for footer height */
             }
             #menu-panel {
                 top: 20px;
                 right: auto;
                 display: none; /* Hidden by default on mobile */
-            }
-            .control-button {
-                padding: 12px;
-                font-size: 1em;
             }
             #comparison-info {
                 flex-direction: column;
@@ -358,6 +377,10 @@
         <p id="planet-info"></p>
         <div id="planet-stats"></div>
         <div id="planet-fact" class="fact-box"></div>
+        <div id="mission-info" style="display: none;">
+            <h3 id="mission-title">Missions</h3>
+            <ul id="mission-list"></ul>
+        </div>
         <button id="compare-btn" class="control-button">Compare</button>
     </div>
 
@@ -368,12 +391,24 @@
         </ul>
     </div>
 
-    <div id="controls-panel" class="ui-panel">
-        <label for="speed-slider" class="drag-handle">Controls</label>
-        <input type="range" id="speed-slider" min="0" max="10" value="1" step="0.1">
-        <button id="view-toggle-btn" class="control-button">Toggle Day View</button>
-        <button id="menu-toggle-btn" class="control-button">Menu</button>
-        <div class="zoom-controls">
+    <div id="footer-controls">
+        <div id="time-display">
+            <div id="date"></div>
+            <div id="clock"></div>
+        </div>
+        <div class="control-group">
+            <label for="speed-slider">Speed</label>
+            <input type="range" id="speed-slider" min="0" max="10" value="1" step="0.1">
+        </div>
+        <div class="control-group">
+            <button id="tour-btn" class="control-button">Start Tour</button>
+            <button id="view-toggle-btn" class="control-button">Toggle Day View</button>
+            <button id="toggle-orbits-btn" class="control-button">Hide Orbits</button>
+            <button id="toggle-labels-btn" class="control-button">Hide Labels</button>
+            <button id="reset-view-btn" class="control-button">Reset View</button>
+            <button id="menu-toggle-btn" class="control-button">Menu</button>
+        </div>
+        <div class="control-group zoom-controls">
             <button id="zoom-in-btn" class="control-button">+</button>
             <button id="zoom-out-btn" class="control-button">-</button>
         </div>
@@ -443,9 +478,10 @@
 
         // --- SIMULATION STATE ---
         let timeScale = 1.0;
-        let viewMode = 0; // 0: Realistic, 1: Day, 2: Night
+        let viewMode = 2; // 0: Realistic, 1: Day, 2: Night. Start in Night view.
         let isComparisonMode = false;
         let firstComparisonObject = null;
+        let isTouring = false;
 
         // --- DATA ---
         const planetData = {
@@ -474,6 +510,7 @@
         // --- OBJECT CREATION ---
         const allObjects = []; 
         const celestialBodies = {};
+        const orbitPaths = [];
         let focusedObject = null;
         
         function createLabel(name, isMoon = false) {
@@ -493,6 +530,7 @@
             const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
             orbit.rotation.x = Math.PI / 2;
             orbit.rotation.z = inclination;
+            orbitPaths.push(orbit);
             return orbit;
         }
 
@@ -510,7 +548,7 @@
             const nightMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
             
             const bodyGroup = new THREE.Group();
-            const bodyMesh = new THREE.Mesh(new THREE.SphereGeometry(radius, isMoon ? 16 : 32, isMoon ? 16 : 32), realisticMaterial);
+            const bodyMesh = new THREE.Mesh(new THREE.SphereGeometry(radius, isMoon ? 16 : 32, isMoon ? 16 : 32), nightMaterial);
             
             bodyMesh.userData.name = name;
             bodyMesh.userData.realisticMaterial = realisticMaterial;
@@ -562,7 +600,7 @@
             emissiveIntensity: 2,
             color: 0xFFD700
         });
-        const sun = new THREE.Mesh(new THREE.SphereGeometry(20, 64, 64), sunRealisticMaterial);
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(20, 64, 64), sunNightMaterial);
         sun.userData = { name: 'Sun', radius: 20, realisticMaterial: sunRealisticMaterial, dayMaterial: sunDayMaterial, nightMaterial: sunNightMaterial };
         scene.add(sun);
         allObjects.push(sun);
@@ -738,7 +776,7 @@
             new TWEEN.Tween(camera.position).to(newPosition, 500).easing(TWEEN.Easing.Cubic.Out).start();
         }
 
-        function focusOnObject(targetObject) {
+        function focusOnObject(targetObject, onComplete = () => {}) {
             if (isAnimating) return;
 
             if (isComparisonMode) {
@@ -763,6 +801,7 @@
                     isAnimating = false;
                     controls.enabled = true;
                     updateInfoPanel(targetObject);
+                    onComplete();
                 }).start();
         }
 
@@ -851,6 +890,14 @@
             firstComparisonObject = null;
 
             animateComparison();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const dateString = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('date').textContent = dateString;
+            document.getElementById('clock').textContent = timeString;
         }
 
         // --- EVENT LISTENERS ---
@@ -950,6 +997,55 @@
 
         document.getElementById('zoom-in-btn').addEventListener('click', () => zoomCamera(1));
         document.getElementById('zoom-out-btn').addEventListener('click', () => zoomCamera(-1));
+        
+        document.getElementById('reset-view-btn').addEventListener('click', resetView);
+
+        document.getElementById('toggle-orbits-btn').addEventListener('click', (e) => {
+            const areVisible = orbitPaths[0].visible;
+            orbitPaths.forEach(orbit => {
+                orbit.visible = !areVisible;
+            });
+            e.target.textContent = areVisible ? 'Show Orbits' : 'Hide Orbits';
+        });
+
+        document.getElementById('toggle-labels-btn').addEventListener('click', (e) => {
+            const areVisible = labelRenderer.domElement.style.display === 'block';
+            labelRenderer.domElement.style.display = areVisible ? 'none' : 'block';
+            e.target.textContent = areVisible ? 'Show Labels' : 'Hide Labels';
+        });
+
+        const tourStops = ['Sun', 'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+        let currentTourStop = 0;
+
+        async function runTour() {
+            isTouring = true;
+            document.getElementById('tour-btn').textContent = 'Stop Tour';
+            
+            for (let i = 0; i < tourStops.length; i++) {
+                if (!isTouring) break;
+                const name = tourStops[i];
+                const targetObject = celestialBodies[name];
+                if (targetObject) {
+                    await new Promise(resolve => {
+                        focusOnObject(targetObject, resolve);
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+                }
+            }
+            
+            isTouring = false;
+            document.getElementById('tour-btn').textContent = 'Start Tour';
+            resetView();
+        }
+
+        document.getElementById('tour-btn').addEventListener('click', () => {
+            if (isTouring) {
+                isTouring = false;
+                document.getElementById('tour-btn').textContent = 'Start Tour';
+            } else {
+                runTour();
+            }
+        });
 
         // --- ANIMATION LOOP ---
         const clock = new THREE.Clock();
@@ -1028,12 +1124,22 @@
             populateMenu();
             
             makeDraggable(document.getElementById('info-panel'));
-            makeDraggable(document.getElementById('controls-panel'));
             makeDraggable(document.getElementById('menu-panel'));
             
-            // Set initial view state
+            // Set initial view state to Night View
+            viewMode = 2;
             scene.background = new THREE.Color(0x000000);
             stars.forEach(star => star.visible = true);
+            document.getElementById('view-toggle-btn').textContent = 'Toggle Realistic View';
+            for (const name in celestialBodies) {
+                const body = celestialBodies[name];
+                if (body.userData.nightMaterial) {
+                    body.material = body.userData.nightMaterial;
+                }
+            }
+
+            updateClock();
+            setInterval(updateClock, 1000);
 
             animate();
         };
